@@ -1,0 +1,6 @@
+# Allow all crawlers — adjust as needed
+User-agent: *
+Allow: /
+
+# Reference sitemap
+Sitemap: https://yourwebsite.com/sitemap.xml

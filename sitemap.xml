@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Update the <loc> value to your production domain if you use a custom domain -->
+  <url>
+    <loc>https://yourwebsite.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <lastmod>2026-01-01</lastmod>
+  </url>
+</urlset>
