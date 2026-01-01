@@ -202,7 +202,12 @@
         <select id="filterLocation" class="border px-3 py-2 rounded text-sm">
           <option value="">All</option>
           <option value="abuja">Abuja</option>
+          <option value="awka">Awka</option>
+          <option value="owerri">Owerri</option>
+          <option value="asaba">Asaba</option>
+          <option value="enugu">Enugu</option>
           <option value="lagos">Lagos</option>
+          <option value="ogun">Ogun</option>
           <option value="dubai">Dubai</option>
         </select>
         <label for="filterPrice" class="text-sm font-semibold ml-4">Max Price (₦):</label>
@@ -231,7 +236,12 @@
           <label class="text-sm">Location</label>
           <select id="propLocation" required class="border w-full px-3 py-2 rounded text-sm">
             <option value="abuja">Abuja</option>
+            <option value="awka">Awka</option>
+            <option value="owerri">Owerri</option>
+            <option value="asaba">Asaba</option>
+            <option value="enugu">Enugu</option>
             <option value="lagos">Lagos</option>
+            <option value="ogun">Ogun</option>
             <option value="dubai">Dubai</option>
           </select>
         </div>
@@ -247,6 +257,20 @@
           <label class="text-sm">Image</label>
           <input id="propImage" type="file" accept="image/*" class="border w-full px-3 py-2 rounded text-sm">
           <div id="imagePreview" class="mt-2"></div>
+        </div>
+        <div>
+          <label class="text-sm">Video (upload) <small class="text-gray-500">(optional, max 10MB)</small></label>
+          <input id="propVideoFile" type="file" accept="video/*" class="border w-full px-3 py-2 rounded text-sm">
+          <div id="videoPreview" class="mt-2"></div>
+          <label class="text-sm mt-2 block">Or paste YouTube URL</label>
+          <input id="propVideoUrl" placeholder="https://youtu.be/... or https://www.youtube.com/watch?v=..." class="border w-full px-3 py-2 rounded text-sm" />
+        </div>
+        <div>
+          <label class="text-sm">Available for Rent</label>
+          <div class="flex items-center gap-2">
+            <input id="propForRent" type="checkbox" class="h-4 w-4" />
+            <span class="text-xs text-gray-500">(Rent inquiries allowed only for properties in Abuja)</span>
+          </div>
         </div>
         <div class="md:col-span-2 flex gap-3">
           <button id="addProperty" type="submit" class="bg-gold text-black px-4 py-2 rounded">Add Property</button>
@@ -361,16 +385,30 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
     div.className = 'property-card bg-white rounded-xl shadow-lg hover:shadow-xl transition';
     div.dataset.location = prop.location || '';
     div.dataset.price = String(prop.price || 0);
+    const mediaHtml = prop.video && prop.videoType === 'youtube' ? `
+        <div class="w-full h-60 bg-black/5 flex items-center justify-center">
+          <a href="${prop.video}" target="_blank" rel="noopener noreferrer" class="text-white bg-black/60 px-3 py-2 rounded">Watch Video</a>
+        </div>` : prop.video && prop.videoType === 'file' ? `
+        <video class="w-full h-60 object-cover" controls src="${prop.video}"></video>` : `
+        <img src="${prop.image}" class="w-full h-60 object-cover" alt="${escapeHtml(prop.title)}">`;
+
     div.innerHTML = `
-      <img src="${prop.image}" class="w-full h-60 object-cover" alt="${escapeHtml(prop.title)}">
+      ${mediaHtml}
       <div class="p-6">
         <h3 class="text-xl font-semibold mb-1">${escapeHtml(prop.title)}</h3>
         <p class="text-gray-600 text-sm mb-3">${escapeHtml(prop.desc || '')}</p>
         <div class="flex justify-between items-center">
           <span class="text-gold font-semibold">₦${Number(prop.price).toLocaleString()}</span>
-          <a href="${prop.waLink || 'https://wa.link/g4x5vg'}" class="bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">Enquire</a>
+          <a href="${prop.waLink || 'https://wa.link/g4x5vg'}" class="bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">${prop.forRent ? 'Rent Enquiry' : 'Enquire'}</a>
         </div>
       </div>`;
+    if(prop.forRent && prop.location !== 'abuja'){
+      // ensure rent flag only valid for Abuja
+      const note = document.createElement('div');
+      note.className = 'text-xs text-red-600 p-2';
+      note.textContent = 'Rent enquiries are available only for Abuja listings.';
+      div.appendChild(note);
+    }
     return div;
   }
 
@@ -427,6 +465,13 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
   saveProps(props);
 
   adminToggle?.addEventListener('click', () => { adminPanel.classList.toggle('hidden'); });
+  const propLocationSelect = document.getElementById('propLocation');
+  const propForRentChk = document.getElementById('propForRent');
+  function updateRentAvailability(){ if(!propForRentChk || !propLocationSelect) return; if(propLocationSelect.value === 'abuja'){ propForRentChk.disabled = false; } else { propForRentChk.disabled = true; propForRentChk.checked = false; } }
+  propLocationSelect?.addEventListener('change', updateRentAvailability);
+  updateRentAvailability();
+  // Import handler: when importing props, ensure forRent only true for Abuja
+  const originalImportHandler = importInput?.onchange;
 
   propImage?.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
@@ -437,6 +482,27 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
     reader.readAsDataURL(f);
   });
 
+  const propVideoFile = document.getElementById('propVideoFile');
+  const videoPreview = document.getElementById('videoPreview');
+  propVideoFile?.addEventListener('change', (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f){ videoPreview.innerHTML=''; videoPreview.dataset.videoUrl=''; return; }
+    if(f.size > 10_000_000){ videoPreview.innerHTML = '<small class="text-red-600">Video too large (max 10MB)</small>'; propVideoFile.value=''; return; }
+    const reader = new FileReader();
+    reader.onload = ()=>{ videoPreview.innerHTML = `<video class="w-40 h-24 object-cover rounded" controls src="${reader.result}"></video>`; videoPreview.dataset.videoUrl = reader.result; };
+    reader.readAsDataURL(f);
+  });
+
+  // YouTube URL preview
+  const propVideoUrl = document.getElementById('propVideoUrl');
+  propVideoUrl?.addEventListener('input', ()=>{
+    const val = propVideoUrl.value.trim();
+    if(!val){ videoPreview.innerHTML=''; videoPreview.dataset.videoUrl=''; return; }
+    // Simple check for YouTube pattern
+    try{ const u = new URL(val); if(u.hostname.includes('youtube') || u.hostname.includes('youtu.be')){ videoPreview.innerHTML = `<div class="text-sm text-gray-600">YouTube link detected — will show as external video link.</div>`; videoPreview.dataset.videoUrl = val; } else { videoPreview.innerHTML = `<div class="text-sm text-red-600">Only YouTube links are supported for external video links.</div>`; videoPreview.dataset.videoUrl = ''; } }
+    catch(e){ videoPreview.innerHTML = `<div class="text-sm text-red-600">Invalid URL</div>`; videoPreview.dataset.videoUrl = ''; }
+  });
+
   propForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const title = document.getElementById('propTitle').value.trim();
@@ -444,13 +510,26 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
     const price = Number(document.getElementById('propPrice').value || 0);
     const location = document.getElementById('propLocation').value;
     const image = imagePreview?.dataset?.dataUrl || '';
-    if(!title || !price || !location || !image){ alert('Please provide title, price, location, and upload an image (<=2MB).'); return; }
-    const waLink = `https://wa.link/g4x5vg?text=${encodeURIComponent('I am interested in ' + title)}`;
-    const newProp = { title, desc, price, location, image, waLink };
+    const videoFileData = document.getElementById('videoPreview')?.dataset?.videoUrl || '';
+    const videoUrl = document.getElementById('propVideoUrl').value.trim() || '';
+    const forRent = Boolean(document.getElementById('propForRent').checked && location === 'abuja');
+
+    if(!title || !price || !location){ alert('Please provide title, price and location.'); return; }
+    if(!image && !videoFileData && !videoUrl){ alert('Please provide an image or a video (upload or YouTube URL).'); return; }
+
+    let video = null, videoType = null;
+    if(videoFileData){ video = videoFileData; videoType = 'file'; }
+    else if(videoUrl){ video = videoUrl; videoType = 'youtube'; }
+
+    // WhatsApp message: if rent, mention renting
+    const waMsg = forRent ? `I am interested in renting ${title}` : `I am interested in ${title}`;
+    const waLink = `https://wa.link/g4x5vg?text=${encodeURIComponent(waMsg)}`;
+
+    const newProp = { title, desc, price, location, image, video, videoType, forRent, waLink };
     props.unshift(newProp);
     saveProps(props);
     renderAll(props);
-    propForm.reset(); imagePreview.innerHTML = ''; adminPanel.classList.add('hidden');
+    propForm.reset(); imagePreview.innerHTML = ''; if(document.getElementById('videoPreview')){ document.getElementById('videoPreview').innerHTML=''; document.getElementById('videoPreview').dataset.videoUrl=''; } adminPanel.classList.add('hidden');
   });
 
   exportBtn?.addEventListener('click', () => {
@@ -463,8 +542,14 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
   importInput?.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0]; if(!f) return;
     const reader = new FileReader(); reader.onload = () => {
-      try{ const data = JSON.parse(reader.result); if(Array.isArray(data)){ props = data; saveProps(props); renderAll(props); alert('Imported ' + data.length + ' properties'); } else alert('Invalid JSON'); }
-      catch(e){ alert('Invalid JSON'); }
+      try{
+        const data = JSON.parse(reader.result);
+        if(Array.isArray(data)){
+          // sanitize: forRent only true for Abuja
+          data.forEach(d => { if(d.forRent && d.location !== 'abuja') d.forRent = false; });
+          props = data; saveProps(props); renderAll(props); alert('Imported ' + data.length + ' properties');
+        } else alert('Invalid JSON');
+      } catch(err){ alert('Invalid JSON'); }
     }; reader.readAsText(f);
   });
 
