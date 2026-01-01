@@ -195,6 +195,66 @@
       </p>
     </div>
 
+    <!-- Controls: filters + admin -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <div class="flex items-center gap-3">
+        <label for="filterLocation" class="text-sm font-semibold">Location:</label>
+        <select id="filterLocation" class="border px-3 py-2 rounded text-sm">
+          <option value="">All</option>
+          <option value="abuja">Abuja</option>
+          <option value="lagos">Lagos</option>
+          <option value="dubai">Dubai</option>
+        </select>
+        <label for="filterPrice" class="text-sm font-semibold ml-4">Max Price (₦):</label>
+        <input id="filterPrice" type="number" placeholder="e.g., 30000000" class="border px-3 py-2 rounded text-sm w-40">
+        <button id="applyFilters" class="bg-gold text-black px-4 py-2 rounded ml-3 text-sm">Apply</button>
+        <button id="resetFilters" class="border px-3 py-2 rounded ml-2 text-sm">Reset</button>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="toggleAdmin" class="bg-black text-white px-3 py-2 rounded text-sm">Admin</button>
+        <button id="exportProps" class="border px-3 py-2 rounded text-sm">Export</button>
+        <input id="importProps" type="file" accept="application/json" class="hidden">
+        <label for="importProps" class="border px-3 py-2 rounded text-sm cursor-pointer">Import</label>
+      </div>
+    </div>
+
+    <!-- Admin panel (hidden by default) -->
+    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow hidden">
+      <h4 class="font-bold mb-3">Add New Property</h4>
+      <form id="propertyForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm">Title</label>
+          <input id="propTitle" required class="border w-full px-3 py-2 rounded text-sm">
+        </div>
+        <div>
+          <label class="text-sm">Location</label>
+          <select id="propLocation" required class="border w-full px-3 py-2 rounded text-sm">
+            <option value="abuja">Abuja</option>
+            <option value="lagos">Lagos</option>
+            <option value="dubai">Dubai</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-sm">Description</label>
+          <textarea id="propDesc" class="border w-full px-3 py-2 rounded text-sm" rows="2"></textarea>
+        </div>
+        <div>
+          <label class="text-sm">Price (₦)</label>
+          <input id="propPrice" type="number" required class="border w-full px-3 py-2 rounded text-sm">
+        </div>
+        <div>
+          <label class="text-sm">Image</label>
+          <input id="propImage" type="file" accept="image/*" class="border w-full px-3 py-2 rounded text-sm">
+          <div id="imagePreview" class="mt-2"></div>
+        </div>
+        <div class="md:col-span-2 flex gap-3">
+          <button id="addProperty" type="submit" class="bg-gold text-black px-4 py-2 rounded">Add Property</button>
+          <button id="clearProperties" type="button" class="border px-4 py-2 rounded">Clear All</button>
+        </div>
+      </form>
+    </div>
+
     <!-- PROPERTY GRID -->
     <div id="propertyGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
 

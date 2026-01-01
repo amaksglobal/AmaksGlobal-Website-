@@ -195,6 +195,66 @@
       </p>
     </div>
 
+    <!-- Controls: filters + admin -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <div class="flex items-center gap-3">
+        <label for="filterLocation" class="text-sm font-semibold">Location:</label>
+        <select id="filterLocation" class="border px-3 py-2 rounded text-sm">
+          <option value="">All</option>
+          <option value="abuja">Abuja</option>
+          <option value="lagos">Lagos</option>
+          <option value="dubai">Dubai</option>
+        </select>
+        <label for="filterPrice" class="text-sm font-semibold ml-4">Max Price (₦):</label>
+        <input id="filterPrice" type="number" placeholder="e.g., 30000000" class="border px-3 py-2 rounded text-sm w-40">
+        <button id="applyFilters" class="bg-gold text-black px-4 py-2 rounded ml-3 text-sm">Apply</button>
+        <button id="resetFilters" class="border px-3 py-2 rounded ml-2 text-sm">Reset</button>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="toggleAdmin" class="bg-black text-white px-3 py-2 rounded text-sm">Admin</button>
+        <button id="exportProps" class="border px-3 py-2 rounded text-sm">Export</button>
+        <input id="importProps" type="file" accept="application/json" class="hidden">
+        <label for="importProps" class="border px-3 py-2 rounded text-sm cursor-pointer">Import</label>
+      </div>
+    </div>
+
+    <!-- Admin panel (hidden by default) -->
+    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow hidden">
+      <h4 class="font-bold mb-3">Add New Property</h4>
+      <form id="propertyForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm">Title</label>
+          <input id="propTitle" required class="border w-full px-3 py-2 rounded text-sm">
+        </div>
+        <div>
+          <label class="text-sm">Location</label>
+          <select id="propLocation" required class="border w-full px-3 py-2 rounded text-sm">
+            <option value="abuja">Abuja</option>
+            <option value="lagos">Lagos</option>
+            <option value="dubai">Dubai</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-sm">Description</label>
+          <textarea id="propDesc" class="border w-full px-3 py-2 rounded text-sm" rows="2"></textarea>
+        </div>
+        <div>
+          <label class="text-sm">Price (₦)</label>
+          <input id="propPrice" type="number" required class="border w-full px-3 py-2 rounded text-sm">
+        </div>
+        <div>
+          <label class="text-sm">Image</label>
+          <input id="propImage" type="file" accept="image/*" class="border w-full px-3 py-2 rounded text-sm">
+          <div id="imagePreview" class="mt-2"></div>
+        </div>
+        <div class="md:col-span-2 flex gap-3">
+          <button id="addProperty" type="submit" class="bg-gold text-black px-4 py-2 rounded">Add Property</button>
+          <button id="clearProperties" type="button" class="border px-4 py-2 rounded">Clear All</button>
+        </div>
+      </form>
+    </div>
+
     <!-- PROPERTY GRID -->
     <div id="propertyGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
 
@@ -295,6 +355,49 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
 // Property utilities: filter by location and maxPrice (price in the data-price in Naira)
 (function(){
   const propertyGrid = document.getElementById('propertyGrid');
+
+  function renderCard(prop){
+    const div = document.createElement('div');
+    div.className = 'property-card bg-white rounded-xl shadow-lg hover:shadow-xl transition';
+    div.dataset.location = prop.location || '';
+    div.dataset.price = String(prop.price || 0);
+    div.innerHTML = `
+      <img src="${prop.image}" class="w-full h-60 object-cover" alt="${escapeHtml(prop.title)}">
+      <div class="p-6">
+        <h3 class="text-xl font-semibold mb-1">${escapeHtml(prop.title)}</h3>
+        <p class="text-gray-600 text-sm mb-3">${escapeHtml(prop.desc || '')}</p>
+        <div class="flex justify-between items-center">
+          <span class="text-gold font-semibold">₦${Number(prop.price).toLocaleString()}</span>
+          <a href="${prop.waLink || 'https://wa.link/g4x5vg'}" class="bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">Enquire</a>
+        </div>
+      </div>`;
+    return div;
+  }
+
+  function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+
+  function saveProps(arr){ localStorage.setItem('amaks_properties', JSON.stringify(arr)); }
+  function loadProps(){ try{ return JSON.parse(localStorage.getItem('amaks_properties')||'null') || null;}catch(e){return null;} }
+
+  function buildInitialFromDOM(){
+    const cards = Array.from(document.querySelectorAll('#propertyGrid .property-card'));
+    if(!cards.length) return [];
+    return cards.map(card => ({
+      title: card.querySelector('h3')?.textContent?.trim() || 'Property',
+      desc: card.querySelector('p')?.textContent?.trim() || '',
+      price: Number(card.dataset.price) || 0,
+      location: card.dataset.location || '',
+      image: card.querySelector('img')?.src || ''
+    }));
+  }
+
+  function renderAll(arr){
+    if(!propertyGrid) return;
+    propertyGrid.innerHTML = '';
+    arr.forEach(p => propertyGrid.appendChild(renderCard(p)));
+  }
+
+  // filtering
   function filterProperties({location=null, maxPrice=null} = {}){
     if(!propertyGrid) return;
     const cards = propertyGrid.querySelectorAll('.property-card');
@@ -303,11 +406,83 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
       const price = Number(card.dataset.price || 0);
       let visible = true;
       if(location && loc !== location) visible = false;
-      if(maxPrice != null && price > Number(maxPrice)) visible = false;
+      if(maxPrice != null && maxPrice !== '' && price > Number(maxPrice)) visible = false;
       card.style.display = visible ? '' : 'none';
     });
   }
-  window.filterProperties = filterProperties; // expose for console or UI hooks later
+
+  // Admin interactions
+  const adminToggle = document.getElementById('toggleAdmin');
+  const adminPanel = document.getElementById('adminPanel');
+  const propForm = document.getElementById('propertyForm');
+  const propImage = document.getElementById('propImage');
+  const imagePreview = document.getElementById('imagePreview');
+  const exportBtn = document.getElementById('exportProps');
+  const importInput = document.getElementById('importProps');
+  const clearBtn = document.getElementById('clearProperties');
+
+  let props = loadProps();
+  if(!props) props = buildInitialFromDOM();
+  renderAll(props);
+  saveProps(props);
+
+  adminToggle?.addEventListener('click', () => { adminPanel.classList.toggle('hidden'); });
+
+  propImage?.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) { imagePreview.innerHTML = ''; return; }
+    if(f.size > 2_000_000){ imagePreview.innerHTML = '<small class="text-red-600">Image too large (max 2MB)</small>'; propImage.value=''; return; }
+    const reader = new FileReader();
+    reader.onload = () => { imagePreview.innerHTML = `<img src="${reader.result}" class="w-40 h-24 object-cover rounded" alt="preview">`; imagePreview.dataset.dataUrl = reader.result; };
+    reader.readAsDataURL(f);
+  });
+
+  propForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.getElementById('propTitle').value.trim();
+    const desc = document.getElementById('propDesc').value.trim();
+    const price = Number(document.getElementById('propPrice').value || 0);
+    const location = document.getElementById('propLocation').value;
+    const image = imagePreview?.dataset?.dataUrl || '';
+    if(!title || !price || !location || !image){ alert('Please provide title, price, location, and upload an image (<=2MB).'); return; }
+    const waLink = `https://wa.link/g4x5vg?text=${encodeURIComponent('I am interested in ' + title)}`;
+    const newProp = { title, desc, price, location, image, waLink };
+    props.unshift(newProp);
+    saveProps(props);
+    renderAll(props);
+    propForm.reset(); imagePreview.innerHTML = ''; adminPanel.classList.add('hidden');
+  });
+
+  exportBtn?.addEventListener('click', () => {
+    const data = JSON.stringify(props, null, 2);
+    const blob = new Blob([data],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'properties.json'; a.click(); URL.revokeObjectURL(url);
+  });
+
+  importInput?.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    const reader = new FileReader(); reader.onload = () => {
+      try{ const data = JSON.parse(reader.result); if(Array.isArray(data)){ props = data; saveProps(props); renderAll(props); alert('Imported ' + data.length + ' properties'); } else alert('Invalid JSON'); }
+      catch(e){ alert('Invalid JSON'); }
+    }; reader.readAsText(f);
+  });
+
+  clearBtn?.addEventListener('click', () => { if(confirm('Clear all saved properties?')){ props = []; saveProps(props); renderAll(props); } });
+
+  // Apply / Reset filter UI
+  document.getElementById('applyFilters')?.addEventListener('click', ()=>{
+    const loc = document.getElementById('filterLocation').value || null;
+    const max = document.getElementById('filterPrice').value || null;
+    filterProperties({location: loc, maxPrice: max});
+  });
+  document.getElementById('resetFilters')?.addEventListener('click', ()=>{
+    document.getElementById('filterLocation').value = '';
+    document.getElementById('filterPrice').value = '';
+    filterProperties();
+  });
+
+  window.filterProperties = filterProperties; // keep exposed
 })();
 </script>
 </body>
