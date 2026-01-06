@@ -680,36 +680,91 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
 
   resetSiteLogoBtn?.addEventListener('click', ()=>{ if(confirm('Reset site logo to default?')){ localStorage.removeItem('amaks_site_logo'); siteLogoPreview.innerHTML=''; applySiteLogo(null); } });
 
-  // Ensure enquire buttons and city links include city-specific WhatsApp queries
+  // Prepare personalised WhatsApp messages and modal interaction
   setTimeout(() => {
     const base = 'https://wa.link/wr0i4o';
 
+    function setTemplate(el, template){ el.dataset.msg = template; el.title = template; }
+
     document.querySelectorAll('.city-link').forEach(a => {
       const city = a.dataset.city || a.textContent.trim();
-      const msg = `Hi, I'm [Your Name]. I'm interested to buy a land or 3 bedroom duplex in ${city}`;
-      a.href = `${base}?text=${encodeURIComponent(msg)}`;
+      const template = `Hi, I'm [Your Name]. I'm interested to buy a land or 3 bedroom duplex in ${city}`;
+      setTemplate(a, template);
+      a.addEventListener('click', handlePrefillClick);
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
     });
 
     document.querySelectorAll('.enquire-btn').forEach(btn => {
       const city = btn.dataset.city;
       const title = btn.dataset.title;
-      if (city && title) {
-        const msg = `Hi, I'm [Your Name]. I'm interested in ${title} in ${city}`;
-        btn.href = `${base}?text=${encodeURIComponent(msg)}`;
-      } else if (city) {
-        const msg = `Hi, I'm [Your Name]. I'm interested to buy a land or 3 bedroom duplex in ${city}`;
-        btn.href = `${base}?text=${encodeURIComponent(msg)}`;
-      } else if (btn.getAttribute('href') && !btn.getAttribute('href').includes('?text=')) {
-        const msg = `Hi, I'm [Your Name]. I'm interested in this property`;
-        btn.href = `${base}?text=${encodeURIComponent(msg)}`;
-      }
-      btn.target = '_blank';
-      btn.rel = 'noopener noreferrer';
+      let template;
+      if (city && title) template = `Hi, I'm [Your Name]. I'm interested in ${title} in ${city}`;
+      else if (city) template = `Hi, I'm [Your Name]. I'm interested to buy a land or 3 bedroom duplex in ${city}`;
+      else template = `Hi, I'm [Your Name]. I'm interested in this property`;
+      setTemplate(btn, template);
+      btn.addEventListener('click', handlePrefillClick);
+      btn.target = '_blank'; btn.rel = 'noopener noreferrer';
     });
+
+    // modal elements
+    const modal = document.getElementById('waModal');
+    const nameInput = document.getElementById('waName');
+    const msgInput = document.getElementById('waMessage');
+    const remember = document.getElementById('waRemember');
+    const openBtn = document.getElementById('waOpenBtn');
+    const closeBtn = document.getElementById('waCloseBtn');
+
+    function handlePrefillClick(e){
+      e.preventDefault();
+      const template = this.dataset.msg || '';
+      const storedName = localStorage.getItem('amaks_user_name') || '';
+      nameInput.value = storedName;
+      msgInput.dataset.original = template;
+      msgInput.value = template.replace('[Your Name]', storedName || '[Your Name]');
+      remember.checked = !!storedName;
+      modal.classList.remove('hidden');
+    }
+
+    openBtn.addEventListener('click', ()=>{
+      const name = nameInput.value.trim();
+      let msg = msgInput.value.trim();
+      if (msg.includes('[Your Name]')) msg = msg.replace('[Your Name]', name || '[Your Name]');
+      if (remember.checked && name) localStorage.setItem('amaks_user_name', name);
+      const url = `${base}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank', 'noopener');
+      modal.classList.add('hidden');
+    });
+
+    closeBtn.addEventListener('click', ()=> modal.classList.add('hidden'));
+
+    // update preview message when name changes (keeps original template)
+    nameInput.addEventListener('input', ()=>{
+      const name = nameInput.value.trim() || '[Your Name]';
+      const original = msgInput.dataset.original || msgInput.value;
+      msgInput.value = original.replace('[Your Name]', name);
+    });
+
   }, 50);
 
   window.filterProperties = filterProperties; // keep exposed
 })();
 </script>
+
+<!-- WhatsApp Personalize Modal -->
+<div id="waModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+    <h3 class="text-xl font-semibold mb-3">Personalize your message</h3>
+    <label class="block text-sm mb-1">Your name</label>
+    <input id="waName" class="w-full border p-2 rounded mb-3" placeholder="Emeka">
+    <label class="block text-sm mb-1">Message</label>
+    <textarea id="waMessage" class="w-full border p-2 rounded mb-3" rows="3"></textarea>
+    <label class="inline-flex items-center gap-2 text-sm mb-4"><input id="waRemember" type="checkbox"> Remember my name</label>
+    <div class="flex justify-end gap-2">
+      <button id="waCloseBtn" class="px-4 py-2 border rounded">Cancel</button>
+      <button id="waOpenBtn" class="px-4 py-2 bg-gold text-black rounded font-bold">Chat on WhatsApp</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
