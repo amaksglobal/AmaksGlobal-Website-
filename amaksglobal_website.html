@@ -419,13 +419,13 @@
     <h2 class="text-3xl serif mb-4">LOCATIONS WE COVER</h2>
     <p class="text-gray-600 mb-6">We operate across key Nigerian cities to connect buyers with verified properties and opportunities.</p>
     <div class="flex flex-wrap justify-center gap-4">
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Abuja</span>
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Lagos</span>
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Ogun</span>
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Enugu</span>
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Owerri</span>
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Asaba</span>
-      <span class="px-4 py-2 border rounded-full bg-white text-gray-800">Awka</span>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Abuja" data-city="Abuja" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Abuja</a>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Lagos" data-city="Lagos" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Lagos</a>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Ogun" data-city="Ogun" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Ogun</a>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Enugu" data-city="Enugu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Enugu</a>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Owerri" data-city="Owerri" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Owerri</a>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Asaba" data-city="Asaba" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Asaba</a>
+      <a href="https://wa.link/g4x5vglink?text=I%20am%20interested%20in%20properties%20in%20Awka" data-city="Awka" target="_blank" rel="noopener noreferrer" class="px-4 py-2 border rounded-full bg-white text-gray-800 city-link">Awka</a>
     </div>
   </div>
 </section>
@@ -509,7 +509,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
         <p class="text-gray-600 text-sm mb-3">${prop.desc || ''}</p>
         <div class="flex justify-between items-center">
           <span class="text-gold font-semibold">₦${Number(prop.price).toLocaleString()}</span>
-          <a href="${prop.waLink || 'https://wa.link/g4x5vglink'}" class="bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">${prop.forRent ? 'Rent Enquiry' : 'Enquire'}</a>
+          <a href="${prop.waLink || 'https://wa.link/g4x5vglink'}" data-city="${prop.location || ''}" class="enquire-btn bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">${prop.forRent ? 'Rent Enquiry' : 'Enquire'}</a>
         </div>
       </div>`;
     if(prop.forRent && prop.location !== 'abuja'){
@@ -677,6 +677,29 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
   });
 
   resetSiteLogoBtn?.addEventListener('click', ()=>{ if(confirm('Reset site logo to default?')){ localStorage.removeItem('amaks_site_logo'); siteLogoPreview.innerHTML=''; applySiteLogo(null); } });
+
+  // Ensure enquire buttons and city links include city-specific WhatsApp queries
+  setTimeout(() => {
+    const base = 'https://wa.link/g4x5vglink';
+    document.querySelectorAll('.city-link').forEach(a => {
+      const city = a.dataset.city || a.textContent.trim();
+      const msg = `I am interested in properties in ${city}`;
+      a.href = `${base}?text=${encodeURIComponent(msg)}`;
+    });
+
+    document.querySelectorAll('.enquire-btn').forEach(btn => {
+      const city = btn.dataset.city;
+      if (city) {
+        const msg = `I am interested in properties in ${city}`;
+        btn.href = `${base}?text=${encodeURIComponent(msg)}`;
+      } else if (btn.getAttribute('href') && !btn.getAttribute('href').includes('?text=')) {
+        const msg = 'I am interested in this property';
+        btn.href = `${base}?text=${encodeURIComponent(msg)}`;
+      }
+      btn.target = '_blank';
+      btn.rel = 'noopener noreferrer';
+    });
+  }, 50);
 
   window.filterProperties = filterProperties; // keep exposed
 })();
