@@ -288,8 +288,8 @@
       </div>
     </div>
 
-    <!-- Admin panel (hidden by default) -->
-    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow hidden">
+    <!-- Admin panel -->
+    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow">
       <h4 class="font-bold mb-3">Add New Property</h4>
       <form id="propertyForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -588,6 +588,132 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
   });
 
   // Enforce rent checkbox availability: disable unless location === abuja
+  propForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.getElementById('propTitle').value.trim();
+    const desc = document.getElementById('propDesc').value.trim();
+    const price = Number(document.getElementById('propPrice').value || 0);
+    const location = document.getElementById('propLocation').value;
+    const image = imagePreview?.dataset?.dataUrl || '';
+    const videoFileData = document.getElementById('videoPreview')?.dataset?.videoUrl || '';
+    const videoUrl = document.getElementById('propVideoUrl').value.trim() || '';
+    const forRent = Boolean(document.getElementById('propForRent').checked && location === 'abuja');
+
+    if(!title || !price || !location){ alert('Please provide title, price and location.'); return; }
+    if(!image && !videoFileData && !videoUrl){ alert('Please provide an image or a video (upload or YouTube URL).'); return; }
+
+    let video = null, videoType = null;
+    if(videoFileData){ video = videoFileData; videoType = 'file'; }
+    else if(videoUrl){ video = videoUrl; videoType = 'youtube'; }
+
+    // WhatsApp message: if rent, mention renting
+    const waMsg = forRent ? `I am interested in renting ${title}` : `I am interested in ${title}`;
+    const waLink = `https://wa.link/wr0i4o?text=${encodeURIComponent(waMsg)}`;
+
+    const newProp = { title, desc, price, location, image, video, videoType, forRent, waLink };
+
+    // Prepare personalised WhatsApp messages and modal interaction
+    setTimeout(() => {
+      const base = 'https://wa.link/wr0i4o';
+
+      function setTemplate(el, template){ el.dataset.msg = template; el.dataset.tooltip = template; el.removeAttribute('title'); }
+
+      document.querySelectorAll('.city-link').forEach(a => {
+        const city = a.dataset.city || a.textContent.trim();
+        const template = `Hi, I'm [Your Name]. I'm interested to buy a land or 3 bedroom duplex in ${city}`;
+        setTemplate(a, template);
+        a.addEventListener('click', handlePrefillClick);
+        a.target = '_blank'; a.rel = 'noopener noreferrer';
+      });
+
+      document.querySelectorAll('.enquire-btn').forEach(btn => {
+        const city = btn.dataset.city;
+        const title = btn.dataset.title;
+        let template;
+        if (city && title) template = `Hi, I'm [Your Name]. I'm interested in ${title} in ${city}`;
+        else if (city) template = `Hi, I'm [Your Name]. I'm interested to buy a land or 3 bedroom duplex in ${city}`;
+        else template = `Hi, I'm [Your Name]. I'm interested in this property`;
+        setTemplate(btn, template);
+        btn.addEventListener('click', handlePrefillClick);
+        btn.target = '_blank'; btn.rel = 'noopener noreferrer';
+      });
+
+      // Create tooltip element
+      let tooltipEl = document.getElementById('globalTooltip');
+      if(!tooltipEl){
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'globalTooltip';
+        tooltipEl.style.cssText = 'position:fixed;pointer-events:none;padding:6px 10px;background:#111;color:#fff;border-radius:6px;font-size:13px;opacity:0;transform:translateY(-6px);transition:opacity .15s,transform .15s;z-index:9999;';
+        document.body.appendChild(tooltipEl);
+      }
+
+      document.querySelectorAll('[data-tooltip]').forEach(el=>{
+        el.addEventListener('mouseenter', ()=>{
+          tooltipEl.textContent = el.dataset.tooltip;
+          const rect = el.getBoundingClientRect();
+          tooltipEl.style.left = (rect.left + rect.width/2 - tooltipEl.offsetWidth/2) + 'px';
+          tooltipEl.style.top = (rect.top - tooltipEl.offsetHeight - 8) + 'px';
+          tooltipEl.style.opacity = '1'; tooltipEl.style.transform = 'translateY(0)';
+        });
+        el.addEventListener('mouseleave', ()=>{ tooltipEl.style.opacity='0'; tooltipEl.style.transform='translateY(-6px)'; });
+      });
+
+      // Create toast element
+      let toastEl = document.getElementById('globalToast');
+      if(!toastEl){
+        toastEl = document.createElement('div');
+        toastEl.id = 'globalToast';
+        toastEl.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#111;color:#fff;padding:10px 14px;border-radius:8px;opacity:0;transition:opacity .2s;z-index:9999;';
+        document.body.appendChild(toastEl);
+      }
+      function showToast(msg){ toastEl.textContent = msg; toastEl.style.opacity='1'; setTimeout(()=>{ toastEl.style.opacity='0'; },3000); }
+
+      // modal elements
+      const modal = document.getElementById('waModal');
+      const nameInput = document.getElementById('waName');
+      const msgInput = document.getElementById('waMessage');
+      const remember = document.getElementById('waRemember');
+      const openBtn = document.getElementById('waOpenBtn');
+      const closeBtn = document.getElementById('waCloseBtn');
+
+      function handlePrefillClick(e){
+        e.preventDefault();
+        const template = this.dataset.msg || '';
+        const storedName = localStorage.getItem('amaks_user_name') || '';
+        nameInput.value = storedName;
+        msgInput.dataset.original = template;
+        msgInput.value = template.replace('[Your Name]', storedName || '[Your Name]');
+        remember.checked = !!storedName;
+        modal.classList.remove('hidden');
+      }
+
+      openBtn.addEventListener('click', ()=>{
+        const name = nameInput.value.trim();
+        let msg = msgInput.value.trim();
+        if (msg.includes('[Your Name]')) msg = msg.replace('[Your Name]', name || '[Your Name]');
+        if (remember.checked && name) localStorage.setItem('amaks_user_name', name);
+        const url = `${base}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank', 'noopener');
+        modal.classList.add('hidden');
+        showToast('WhatsApp opened');
+      });
+
+      closeBtn.addEventListener('click', ()=> modal.classList.add('hidden'));
+
+      // update preview message when name changes (keeps original template)
+      nameInput.addEventListener('input', ()=>{
+        const name = nameInput.value.trim() || '[Your Name]';
+        const original = msgInput.dataset.original || msgInput.value;
+        msgInput.value = original.replace('[Your Name]', name);
+      });
+
+    }, 50);
+    props.unshift(newProp);
+    saveProps(props);
+    renderAll(props);
+    propForm.reset(); imagePreview.innerHTML = ''; if(document.getElementById('videoPreview')){ document.getElementById('videoPreview').innerHTML=''; document.getElementById('videoPreview').dataset.videoUrl=''; }
+    if(typeof showToast === 'function') showToast('Property added');
+  });
   const propLocationSelect = document.getElementById('propLocation');
   const propForRentChk = document.getElementById('propForRent');
   function updateRentAvailability(){ if(!propForRentChk || !propLocationSelect) return; if(propLocationSelect.value === 'abuja'){ propForRentChk.disabled = false; } else { propForRentChk.disabled = true; propForRentChk.checked = false; } }

@@ -288,8 +288,8 @@
       </div>
     </div>
 
-    <!-- Admin panel (hidden by default) -->
-    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow hidden">
+    <!-- Admin panel -->
+    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow">
       <h4 class="font-bold mb-3">Add New Property</h4>
       <form id="propertyForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -718,7 +718,8 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
     props.unshift(newProp);
     saveProps(props);
     renderAll(props);
-    propForm.reset(); imagePreview.innerHTML = ''; if(document.getElementById('videoPreview')){ document.getElementById('videoPreview').innerHTML=''; document.getElementById('videoPreview').dataset.videoUrl=''; } adminPanel.classList.add('hidden');
+    propForm.reset(); imagePreview.innerHTML = ''; if(document.getElementById('videoPreview')){ document.getElementById('videoPreview').innerHTML=''; document.getElementById('videoPreview').dataset.videoUrl=''; }
+    if(typeof showToast === 'function') showToast('Property added');
   });
 
   exportBtn?.addEventListener('click', () => {
