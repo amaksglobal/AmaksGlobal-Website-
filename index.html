@@ -289,7 +289,7 @@
     </div>
 
     <!-- Admin panel -->
-    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow">
+    <div id="adminPanel" class="bg-white p-6 rounded-lg mb-8 shadow hidden">
       <h4 class="font-bold mb-3">Add New Property</h4>
       <form id="propertyForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -343,7 +343,7 @@
       </form>
     </div>
 
-    <!-- Site Settings (logo upload) -->
+    <!-- Site Settings (logo upload & admin password) -->
     <div id="siteSettings" class="bg-white p-6 rounded-lg mb-8 shadow">
       <h4 class="font-bold mb-3">Site Settings</h4>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
@@ -355,6 +355,21 @@
         <div class="flex items-start gap-3">
           <button id="saveSiteLogo" class="bg-gold text-black px-4 py-2 rounded">Save Logo</button>
           <button id="resetSiteLogo" class="border px-4 py-2 rounded">Reset Logo</button>
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div>
+          <label class="text-sm">Admin password</label>
+          <input id="siteAdminPassword" type="password" class="border w-full px-3 py-2 rounded text-sm" placeholder="Set a new admin password">
+          <small class="text-gray-500">Leave blank to keep current. Default: <code>admin123</code></small>
+        </div>
+        <div class="flex items-start gap-3">
+          <button id="saveAdminPassword" class="bg-gold text-black px-4 py-2 rounded">Save Password</button>
+          <button id="resetAdminPassword" class="border px-4 py-2 rounded">Reset to Default</button>
+          <button id="adminLogout" class="border px-4 py-2 rounded">Logout Admin</button>
         </div>
       </div>
     </div>
@@ -543,6 +558,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
   // Admin interactions
   const adminToggle = document.getElementById('toggleAdmin');
   const adminPanel = document.getElementById('adminPanel');
+  // adminToggle is wired to open password modal (see init below)
   const propForm = document.getElementById('propertyForm');
   const propImage = document.getElementById('propImage');
   const imagePreview = document.getElementById('imagePreview');
@@ -787,9 +803,71 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventLis
 
   resetSiteLogoBtn?.addEventListener('click', ()=>{ if(confirm('Reset site logo to default?')){ localStorage.removeItem('amaks_site_logo'); siteLogoPreview.innerHTML=''; applySiteLogo(null); } });
 
+  // --- Admin password gating: modal, save/reset and session auth ---
+  function getAdminPassword(){ return localStorage.getItem('amaks_admin_password') || 'admin123'; }
+  function isAdminAuthenticated(){ return sessionStorage.getItem('amaks_admin_auth') === '1'; }
+  function setAdminAuth(flag){ if(flag) sessionStorage.setItem('amaks_admin_auth','1'); else sessionStorage.removeItem('amaks_admin_auth'); }
+
+  const adminAuthModal = document.getElementById('adminAuthModal');
+  const adminPassInput = document.getElementById('adminPassInput');
+  const adminPassSubmit = document.getElementById('adminPassSubmit');
+  const adminPassCancel = document.getElementById('adminPassCancel');
+  const adminAuthError = document.getElementById('adminAuthError');
+  const saveAdminPasswordBtn = document.getElementById('saveAdminPassword');
+  const resetAdminPasswordBtn = document.getElementById('resetAdminPassword');
+  const siteAdminPasswordInput = document.getElementById('siteAdminPassword');
+  const adminLogoutBtn = document.getElementById('adminLogout');
+
+  function openAdminPanel(){ adminPanel.classList.remove('hidden'); if(typeof showToast === 'function') showToast('Admin panel opened'); }
+  function closeAdminPanel(){ adminPanel.classList.add('hidden'); }
+
+  // initialize
+  if(isAdminAuthenticated()) openAdminPanel(); else closeAdminPanel();
+
+  adminToggle?.addEventListener('click', (e) => {
+    if(isAdminAuthenticated()){ adminPanel.classList.toggle('hidden'); return; }
+    if(adminAuthError) adminAuthError.classList.add('hidden');
+    if(adminPassInput) adminPassInput.value = '';
+    if(adminAuthModal) adminAuthModal.classList.remove('hidden');
+  });
+
+  adminPassCancel?.addEventListener('click', ()=> adminAuthModal.classList.add('hidden'));
+  adminPassSubmit?.addEventListener('click', ()=>{
+    const pw = adminPassInput.value || '';
+    if(pw === getAdminPassword()){ setAdminAuth(true); adminAuthModal.classList.add('hidden'); openAdminPanel(); }
+    else { if(adminAuthError) adminAuthError.classList.remove('hidden'); }
+  });
+
+  saveAdminPasswordBtn?.addEventListener('click', ()=>{
+    const val = (siteAdminPasswordInput && siteAdminPasswordInput.value) ? siteAdminPasswordInput.value.trim() : '';
+    if(!val){ alert('Please enter a password to save.'); return; }
+    localStorage.setItem('amaks_admin_password', val);
+    if(typeof showToast === 'function') showToast('Admin password saved');
+  });
+
+  resetAdminPasswordBtn?.addEventListener('click', ()=>{
+    if(confirm('Reset admin password to default?')){ localStorage.removeItem('amaks_admin_password'); if(typeof showToast === 'function') showToast('Admin password reset to default'); }
+  });
+
+  adminLogoutBtn?.addEventListener('click', ()=>{ setAdminAuth(false); closeAdminPanel(); if(typeof showToast === 'function') showToast('Logged out'); });
+
   window.filterProperties = filterProperties; // keep exposed
 })();
 </script>
+
+<!-- Admin Auth Modal -->
+<div id="adminAuthModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+    <h3 class="text-xl font-semibold mb-3">Admin Login</h3>
+    <label class="block text-sm mb-1">Password</label>
+    <input id="adminPassInput" type="password" class="w-full border p-2 rounded mb-3" placeholder="Enter admin password">
+    <div id="adminAuthError" class="text-sm text-red-600 mb-3 hidden">Incorrect password</div>
+    <div class="flex justify-end gap-2">
+      <button id="adminPassCancel" class="px-4 py-2 border rounded">Cancel</button>
+      <button id="adminPassSubmit" class="px-4 py-2 bg-gold text-black rounded font-bold">Unlock</button>
+    </div>
+  </div>
+</div>
 
 <!-- WhatsApp Personalize Modal -->
 <div id="waModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
